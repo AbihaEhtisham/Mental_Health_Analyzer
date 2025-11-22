@@ -9,27 +9,34 @@ import os
 import re 
 import random  
 from datetime import datetime  
-from services.report_service import generate_weekly_report
 
-
-# Import from new structure
-from LLM_logic_for_mood_detection import query_mood_model
-from LLM_logic_for_psychiatrist import chat_with_psychiatrist, get_initial_greeting
-from prompt_for_mood_detection import system_prompt
-from database import (
-    create_user,
-    get_user,
-    user_exists,
-    save_mood_log,
-    get_user_mood_history,
-    create_chat_session,
-    end_chat_session,
-    save_chat_message,
-    get_session_messages,
-    get_user_chat_sessions,
-    get_latest_mood_log
-)
-
+# Dynamic imports that work both locally and on Vercel
+try:
+    # Try Vercel-style imports first
+    from backend.app.services.report_service import generate_weekly_report
+    from backend.app.LLM_logic_for_mood_detection import query_mood_model
+    from backend.app.LLM_logic_for_psychiatrist import chat_with_psychiatrist, get_initial_greeting
+    from backend.app.prompt_for_mood_detection import system_prompt
+    from backend.app.database import (
+        create_user, get_user, user_exists, save_mood_log,
+        get_user_mood_history, create_chat_session, end_chat_session,
+        save_chat_message, get_session_messages, get_user_chat_sessions,
+        get_latest_mood_log
+    )
+    print("✅ Using Vercel import paths")
+except ImportError:
+    # Fallback to local imports
+    from services.report_service import generate_weekly_report
+    from LLM_logic_for_mood_detection import query_mood_model
+    from LLM_logic_for_psychiatrist import chat_with_psychiatrist, get_initial_greeting
+    from prompt_for_mood_detection import system_prompt
+    from database import (
+        create_user, get_user, user_exists, save_mood_log,
+        get_user_mood_history, create_chat_session, end_chat_session,
+        save_chat_message, get_session_messages, get_user_chat_sessions,
+        get_latest_mood_log
+    )
+    print("✅ Using local import paths")
 
 app = FastAPI(title="Mental Health Analyzer API")
 
@@ -42,13 +49,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static files from CURRENT directory (where main.py is located)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Dynamic path handling for both local and Vercel
+if os.environ.get('VERCEL'):
+    # On Vercel - files are in backend/app/ but served from root
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # On Vercel, we need to look in backend/app for our files
+    HTML_DIR = os.path.join(BASE_DIR, "backend", "app")
+else:
+    # Locally - files are in current directory (backend/app/)
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    HTML_DIR = BASE_DIR
 
-# Debug: Print paths to verify
 print(f"Current file: {__file__}")
 print(f"BASE_DIR: {BASE_DIR}")
-print(f"Files in current directory: {os.listdir(BASE_DIR)}")
+print(f"HTML_DIR: {HTML_DIR}")
+print(f"Files in HTML_DIR: {os.listdir(HTML_DIR)}")
 
 # ============== API ENDPOINTS FIRST (to avoid conflicts) ==============
 
@@ -56,27 +71,22 @@ print(f"Files in current directory: {os.listdir(BASE_DIR)}")
 class SignupRequest(BaseModel):
     username: str
 
-
 class LoginRequest(BaseModel):
     username: str
-
 
 class MoodDetectRequest(BaseModel):
     username: str
     answers: Dict[str, str]
-
 
 class UserResponse(BaseModel):
     username: str
     status: str
     message: str
 
-
 class MoodResponse(BaseModel):
     mood: str
     status: str
     log_id: int
-
 
 class MoodHistoryItem(BaseModel):
     id: int
@@ -84,12 +94,10 @@ class MoodHistoryItem(BaseModel):
     answers: Dict[str, str]
     created_at: str
 
-
 class MoodHistoryResponse(BaseModel):
     username: str
     total_entries: int
     history: List[MoodHistoryItem]
-
 
 # NEW: Weekly Report Models
 class WeeklyReportResponse(BaseModel):
@@ -100,7 +108,6 @@ class WeeklyReportResponse(BaseModel):
     insights: List[str]
     recommendations: List[str]
     mood_trend: str
-
 
 # Endpoints - PUT THESE BEFORE STATIC FILE ROUTES
 @app.post("/signup", response_model=UserResponse)
@@ -127,7 +134,6 @@ async def signup(request: SignupRequest):
         message="User registered successfully"
     )
 
-
 @app.post("/login", response_model=UserResponse)
 async def login(request: LoginRequest):
     """
@@ -148,7 +154,6 @@ async def login(request: LoginRequest):
         status="success",
         message="Login successful"
     )
-
 
 @app.post("/detect-mood", response_model=MoodResponse)
 async def detect_mood(request: MoodDetectRequest):
@@ -184,7 +189,6 @@ async def detect_mood(request: MoodDetectRequest):
 
     return MoodResponse(mood=mood, status="success", log_id=log_id)
 
-
 @app.get("/mood-history/{username}", response_model=MoodHistoryResponse)
 async def get_mood_history(username: str):
     """
@@ -214,7 +218,6 @@ async def get_mood_history(username: str):
         history=history_items
     )
 
-
 @app.get("/check-user/{username}")
 async def check_user(username: str):
     """
@@ -227,29 +230,24 @@ async def check_user(username: str):
         "action": "login" if exists else "signup"
     }
 
-
 # ============== CHAT/PSYCHIATRIST ENDPOINTS ==============
 
 class StartChatRequest(BaseModel):
     username: str
     mood_log_id: int
 
-
 class StartChatResponse(BaseModel):
     session_id: int
     greeting: str
     mood: str
 
-
 class ChatMessageRequest(BaseModel):
     session_id: int
     message: str
 
-
 class ChatMessageResponse(BaseModel):
     response: str
     message_id: int
-
 
 class ChatMessage(BaseModel):
     id: int
@@ -257,13 +255,11 @@ class ChatMessage(BaseModel):
     content: str
     created_at: str
 
-
 class ChatSessionInfo(BaseModel):
     id: int
     mood: str
     started_at: str
     ended_at: Optional[str]
-
 
 @app.post("/chat/start", response_model=StartChatResponse)
 async def start_chat_session(request: StartChatRequest):
@@ -309,7 +305,6 @@ async def start_chat_session(request: StartChatRequest):
         mood=current_mood
     )
 
-
 @app.post("/chat/message", response_model=ChatMessageResponse)
 async def send_chat_message(request: ChatMessageRequest):
     """
@@ -322,7 +317,11 @@ async def send_chat_message(request: ChatMessageRequest):
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
     # Get session info to find user and mood
-    from database import get_connection
+    try:
+        from backend.app.database import get_connection
+    except ImportError:
+        from database import get_connection
+        
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -366,14 +365,16 @@ async def send_chat_message(request: ChatMessageRequest):
 
     return ChatMessageResponse(response=response, message_id=message_id)
 
-
 # Add this to your main.py after the other endpoints
 
 @app.get("/debug/report-test/{username}")
 async def debug_report_test(username: str):
     """Debug endpoint to test report generation"""
     try:
-        from services.report_service import generate_weekly_report
+        try:
+            from backend.app.services.report_service import generate_weekly_report
+        except ImportError:
+            from services.report_service import generate_weekly_report
         report = generate_weekly_report(username)
         return {
             "status": "success",
@@ -390,7 +391,10 @@ async def debug_report_test(username: str):
 @app.get("/debug/user-mood-data/{username}")
 async def debug_user_mood_data(username: str):
     """Debug endpoint to check user mood data"""
-    from database import get_user_mood_history, get_user
+    try:
+        from backend.app.database import get_user_mood_history, get_user
+    except ImportError:
+        from database import get_user_mood_history, get_user
     
     user = get_user(username)
     mood_history = get_user_mood_history(username)
@@ -415,7 +419,10 @@ async def get_simple_report(username: str):
     """
     Simple fallback report endpoint
     """
-    from database import get_user_mood_history, get_user
+    try:
+        from backend.app.database import get_user_mood_history, get_user
+    except ImportError:
+        from database import get_user_mood_history, get_user
     
     username = username.strip()
     
@@ -473,7 +480,6 @@ async def get_chat_history(session_id: int):
         "messages": messages
     }
 
-
 @app.get("/chat/sessions/{username}")
 async def get_user_sessions(username: str):
     """
@@ -487,7 +493,6 @@ async def get_user_sessions(username: str):
         "username": username,
         "sessions": sessions
     }
-
 
 @app.get("/weekly-report/{username}", response_model=WeeklyReportResponse)
 async def get_weekly_report(username: str):
@@ -636,39 +641,38 @@ async def get_chatbot_intents():
     """Get list of available intents"""
     return {"intents": list(CHATBOT_INTENTS.keys())}
 
-
 # ============== STATIC FILE ROUTES (PUT THESE LAST) ==============
 
 # Serve static files (JS, CSS, HTML) - PUT THESE AFTER API ENDPOINTS
 @app.get("/")
 async def serve_login():
     """Serve the login page as default."""
-    return FileResponse(os.path.join(BASE_DIR, "login.html"))
+    return FileResponse(os.path.join(HTML_DIR, "login.html"))
 
 @app.get("/login")
 async def serve_login_page():
     """Serve the login page."""
-    return FileResponse(os.path.join(BASE_DIR, "login.html"))
+    return FileResponse(os.path.join(HTML_DIR, "login.html"))
 
 @app.get("/questions")
 async def serve_questions():
     """Serve the questions page."""
-    return FileResponse(os.path.join(BASE_DIR, "login.html"))
+    return FileResponse(os.path.join(HTML_DIR, "login.html"))
 
 @app.get("/results")
 async def serve_results():
     """Serve the results page."""
-    return FileResponse(os.path.join(BASE_DIR, "results.html"))
+    return FileResponse(os.path.join(HTML_DIR, "results.html"))
 
 @app.get("/report")
 async def serve_report():
     """Serve the weekly report page."""
-    return FileResponse(os.path.join(BASE_DIR, "report.html"))
+    return FileResponse(os.path.join(HTML_DIR, "report.html"))
 
 @app.get("/chat")
 async def serve_chat():
     """Serve the chat page."""
-    return FileResponse(os.path.join(BASE_DIR, "chat.html"))
+    return FileResponse(os.path.join(HTML_DIR, "chat.html"))
 
 # Serve JS files
 @app.get("/{filename}.js")
@@ -676,7 +680,7 @@ async def serve_js(filename: str):
     """Serve JavaScript files."""
     js_files = ["questions", "results", "report", "chat"]
     if filename in js_files:
-        file_path = os.path.join(BASE_DIR, f"{filename}.js")
+        file_path = os.path.join(HTML_DIR, f"{filename}.js")
         if os.path.exists(file_path):
             return FileResponse(file_path, media_type="application/javascript")
     raise HTTPException(status_code=404, detail="File not found")
@@ -685,7 +689,7 @@ async def serve_js(filename: str):
 @app.get("/styles.css")
 async def serve_css():
     """Serve CSS files."""
-    file_path = os.path.join(BASE_DIR, "styles.css")
+    file_path = os.path.join(HTML_DIR, "styles.css")
     if os.path.exists(file_path):
         return FileResponse(file_path, media_type="text/css")
     raise HTTPException(status_code=404, detail="File not found")
@@ -694,18 +698,17 @@ async def serve_css():
 @app.get("/assets/{asset_path:path}")
 async def serve_assets(asset_path: str):
     """Serve assets from the assets folder."""
-    asset_file_path = os.path.join(BASE_DIR, "assets", asset_path)
+    asset_file_path = os.path.join(HTML_DIR, "assets", asset_path)
     if os.path.exists(asset_file_path):
         return FileResponse(asset_file_path)
     raise HTTPException(status_code=404, detail="Asset not found")
-
 
 @app.get("/{filename}.html")
 async def serve_html(filename: str):
     """Serve HTML files."""
     html_files = ["login", "results", "report", "chat"]
     if filename in html_files:
-        file_path = os.path.join(BASE_DIR, f"{filename}.html")
+        file_path = os.path.join(HTML_DIR, f"{filename}.html")
         if os.path.exists(file_path):
             return FileResponse(file_path, media_type="text/html")
     raise HTTPException(status_code=404, detail="File not found")
