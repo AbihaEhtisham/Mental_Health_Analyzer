@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Report - Mental Health Analyzer</title>
+    <style>
+        :root {
+            --primary-color: #4a6fa5;
+            --secondary-color: #6b8cbc;
+            --accent-color: #ff7e5f;
+            --light-color: #f5f7fa;
+            --dark-color: #333;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --info-color: #2196f3;
+            --button-color: #4a0ca3;
+            --button-hover: #1a5dc2;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #4a0ca3 0%, #1a5dc2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #2c3e50;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(40px) scale(0.95); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #e8e8e8;
+            padding-bottom: 20px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .logo-icon {
+            font-size: 2.5rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #4a0ca3 0%, #1a5dc2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #5d6d7e;
+            font-size: 1.1rem;
+        }
+
+        .report-period {
+            text-align: center;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 4px solid var(--button-color);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-top: 4px solid var(--button-color);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--button-color);
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #5d6d7e;
+            font-size: 1rem;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 2px;
+            background: linear-gradient(90deg, #4a0ca3, transparent);
+        }
+
+        .mood-distribution {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .mood-item {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .mood-emoji {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .mood-count {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--button-color);
+        }
+
+        .mood-name {
+            color: #5d6d7e;
+            font-size: 0.9rem;
+        }
+
+        .insights-list, .recommendations-list {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .insight-item, .recommendation-item {
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--info-color);
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .recommendation-item {
+            border-left-color: var(--success-color);
+        }
+
+        .item-icon {
+            font-size: 1.2rem;
+            margin-top: 2px;
+        }
+
+        .trend-indicator {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .trend-improving {
+            background: #e8f5e8;
+            color: #2ecc71;
+        }
+
+        .trend-declining {
+            background: #fdedec;
+            color: #e74c3c;
+        }
+
+        .trend-stable {
+            background: #fef9e7;
+            color: #f39c12;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 25px;
+            border-radius: 12px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--button-color) 0%, var(--button-hover) 100%);
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: #5d6d7e;
+            border: 2px solid #bdc3c7;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-outline:hover {
+            background: #f8f9fa;
+            border-color: var(--button-color);
+            color: var(--button-color);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--button-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .data-source {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .glass-card {
+                padding: 25px 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .mood-distribution {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="glass-card">
+            <div class="header">
+                <div class="logo">
+                    <span class="logo-icon">📊</span>
+                    <h1>Weekly Mental Health Report</h1>
+                </div>
+                <p class="subtitle">Personalized insights based on your mood tracking</p>
+            </div>
+
+            <div id="data-source" class="data-source" style="display: none;"></div>
+
+            <div id="report-content">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Generating your weekly report...</p>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button onclick="window.location.href='/results'" class="btn btn-outline">
+                    <span>←</span>
+                    Back to Results
+                </button>
+                <button onclick="downloadReport()" class="btn btn-primary">
+                    <span>📥</span>
+                    Download Report
+                </button>
+                <button onclick="window.location.href='/questions'" class="btn btn-primary">
+                    <span>🔄</span>
+                    New Assessment
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mood configuration for display
+        const moodConfig = {
+            'Happy/Calm': { emoji: '😊', color: '#2ecc71' },
+            'Neutral': { emoji: '😐', color: '#f39c12' },
+            'Stressed': { emoji: '😥', color: '#e74c3c' },
+            'Depressed/Low': { emoji: '😔', color: '#9b59b6' },
+            'Tired/Exhausted': { emoji: '😴', color: '#3498db' }
+        };
+
+        // Function to get URL parameters
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                user: params.get('user') || localStorage.getItem('currentUser'),
+                source: params.get('source')
+            };
+        }
+
+        // Function to load report from different sources
+        async function loadWeeklyReport() {
+            const params = getUrlParams();
+            const username = params.user;
+            const source = params.source;
+
+            if (!username) {
+                window.location.href = '/login';
+                return;
+            }
+
+            // Show data source info
+            const dataSourceElement = document.getElementById('data-source');
+            if (source === 'local') {
+                dataSourceElement.textContent = "Using current session data";
+                dataSourceElement.style.display = 'block';
+            } else {
+                dataSourceElement.textContent = "Using server data";
+                dataSourceElement.style.display = 'block';
+            }
+
+            if (source === 'local') {
+                // Use localStorage data
+                const localReport = localStorage.getItem('currentReport');
+                if (localReport) {
+                    const report = JSON.parse(localReport);
+                    displayReport(report);
+                    return;
+                }
+            }
+
+            // Try the main report endpoint
+            try {
+                const response = await fetch(`/weekly-report/${username}`);
+                if (!response.ok) {
+                    throw new Error('Main endpoint failed');
+                }
+                const report = await response.json();
+                displayReport(report);
+            } catch (error) {
+                console.log('Main endpoint failed, trying fallback:', error);
+                
+                // Try fallback endpoint
+                try {
+                    const response = await fetch(`/simple-report/${username}`);
+                    if (!response.ok) {
+                        throw new Error('Fallback endpoint failed');
+                    }
+                    const report = await response.json();
+                    displayReport(report);
+                } catch (fallbackError) {
+                    console.log('Fallback endpoint failed, using localStorage:', fallbackError);
+                    
+                    // Show basic report using localStorage
+                    showBasicReport(username);
+                }
+            }
+        }
+
+        // Function to show basic report using localStorage data
+        function showBasicReport(username) {
+            const currentMood = localStorage.getItem('currentMood') || 'Not recorded';
+            const moodLogId = localStorage.getItem('currentMoodLogId');
+            
+            // Update data source info
+            document.getElementById('data-source').textContent = "Using basic session data (server unavailable)";
+            
+            const report = {
+                username: username,
+                period: "Current Session",
+                total_entries: moodLogId ? 1 : 0,
+                mood_distribution: currentMood !== 'Not recorded' ? { [currentMood]: 1 } : {},
+                insights: [
+                    currentMood !== 'Not recorded' 
+                        ? `Your current mood is: ${currentMood}`
+                        : "Complete a mood assessment to get insights",
+                    "This is a basic report using your current session data",
+                    "Complete more assessments to get comprehensive weekly insights"
+                ],
+                recommendations: [
+                    "Complete regular mood assessments for better insights",
+                    "Practice mindfulness and self-care daily",
+                    "Stay connected with supportive relationships",
+                    "Maintain healthy sleep and nutrition habits"
+                ],
+                mood_trend: "Current session data"
+            };
+            
+            displayReport(report);
+        }
+
+        // Function to display the report
+        function displayReport(report) {
+            const moodDistributionHTML = Object.entries(report.mood_distribution)
+                .map(([mood, count]) => {
+                    const moodData = moodConfig[mood] || { emoji: '❓', color: '#95a5a6' };
+                    return `
+                        <div class="mood-item">
+                            <div class="mood-emoji">${moodData.emoji}</div>
+                            <div class="mood-count">${count}</div>
+                            <div class="mood-name">${mood}</div>
+                        </div>
+                    `;
+                })
+                .join('');
+
+            const insightsHTML = report.insights
+                .map(insight => `
+                    <div class="insight-item">
+                        <span class="item-icon">💡</span>
+                        <div>${insight}</div>
+                    </div>
+                `)
+                .join('');
+
+            const recommendationsHTML = report.recommendations
+                .map(rec => `
+                    <div class="recommendation-item">
+                        <span class="item-icon">✅</span>
+                        <div>${rec}</div>
+                    </div>
+                `)
+                .join('');
+
+            // Determine trend class
+            const trendClass = report.mood_trend.toLowerCase().includes('improving') ? 'trend-improving' :
+                             report.mood_trend.toLowerCase().includes('declining') ? 'trend-declining' : 'trend-stable';
+
+            document.getElementById('report-content').innerHTML = `
+                <div class="report-period">
+                    <h3>Report Period: ${report.period}</h3>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">${report.total_entries}</div>
+                        <div class="stat-label">Mood Entries</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${Object.keys(report.mood_distribution).length}</div>
+                        <div class="stat-label">Different Moods</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">7</div>
+                        <div class="stat-label">Days Analyzed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">
+                            ${report.mood_trend.split(' - ')[0]}
+                            <span class="trend-indicator ${trendClass}">${report.mood_trend.split(' - ')[1]}</span>
+                        </div>
+                        <div class="stat-label">Weekly Trend</div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3 class="section-title">
+                        <span>📈</span>
+                        Mood Distribution
+                    </h3>
+                    <div class="mood-distribution">
+                        ${moodDistributionHTML || '<p>No mood data available for this period.</p>'}
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3 class="section-title">
+                        <span>🔍</span>
+                        Key Insights
+                    </h3>
+                    <div class="insights-list">
+                        ${insightsHTML || '<p>No insights available.</p>'}
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3 class="section-title">
+                        <span>💡</span>
+                        Personalized Recommendations
+                    </h3>
+                    <div class="recommendations-list">
+                        ${recommendationsHTML || '<p>No recommendations available.</p>'}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Function to download report as PDF (basic implementation)
+        function downloadReport() {
+            const reportContent = document.getElementById('report-content').innerText;
+            const blob = new Blob([reportContent], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mental-health-report-${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            alert('Report downloaded! A more advanced PDF version will be available soon.');
+        }
+
+        // Load report when page loads
+        document.addEventListener('DOMContentLoaded', loadWeeklyReport);
+    </script>
+</body>
+</html>

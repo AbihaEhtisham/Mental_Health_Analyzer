@@ -226,6 +226,77 @@ def get_session_messages(session_id: int) -> List[Dict]:
         for row in rows
     ]
 
+# ============== APPOINTMENT FUNCTIONS ==============
+
+def create_appointment_table():
+    """Create appointments table if it doesn't exist"""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS appointments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            appointment_date TEXT NOT NULL,
+            appointment_time TEXT NOT NULL,
+            appointment_type TEXT DEFAULT 'General Consultation',
+            status TEXT DEFAULT 'Scheduled',
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+def create_appointment(user_id: int, appointment_date: str, appointment_time: str, 
+                      appointment_type: str = 'General Consultation', notes: str = '') -> int:
+    """Create a new appointment. Returns appointment id."""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO appointments (user_id, appointment_date, appointment_time, appointment_type, notes, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (user_id, appointment_date, appointment_time, appointment_type, notes, get_pkt_now()))
+
+    conn.commit()
+    appointment_id = cursor.lastrowid
+    conn.close()
+    return appointment_id
+
+def get_user_appointments(username: str) -> List[Dict]:
+    """Get all appointments for a user"""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT a.id, a.appointment_date, a.appointment_time, a.appointment_type, a.status, a.notes, a.created_at
+        FROM appointments a
+        JOIN users u ON a.user_id = u.id
+        WHERE u.username = ?
+        ORDER BY a.appointment_date DESC, a.appointment_time DESC
+    """, (username,))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "id": row["id"],
+            "appointment_date": row["appointment_date"],
+            "appointment_time": row["appointment_time"],
+            "appointment_type": row["appointment_type"],
+            "status": row["status"],
+            "notes": row["notes"],
+            "created_at": row["created_at"]
+        }
+        for row in rows
+    ]
+
+# Initialize appointments table
+create_appointment_table()
 
 def get_user_chat_sessions(username: str) -> List[Dict]:
     """Get all chat sessions for a user."""

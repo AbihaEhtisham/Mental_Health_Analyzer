@@ -1,117 +1,119 @@
-from datetime import datetime, timedelta
-import sys
-import os
-
-# Add the current directory to Python path so we can import from the same folder
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from database import get_connection
+from database import get_user_mood_history, get_user
 from typing import Dict, List
+import json
 
 def generate_weekly_report(username: str) -> Dict:
-    """Generate weekly mood report with insights and recommendations"""
-    conn = get_connection()
-    cursor = conn.cursor()
+    """
+    Generate a simple weekly report using available mood data
+    """
+    print(f"Generating report for: {username}")
     
-    # Get last 7 days of mood data
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=7)
+    user = get_user(username)
+    if not user:
+        raise ValueError("User not found")
     
-    cursor.execute("""
-        SELECT mood, created_at, answers
-        FROM mood_logs ml
-        JOIN users u ON ml.user_id = u.id
-        WHERE u.username = ? AND date(ml.created_at) BETWEEN date(?) AND date(?)
-        ORDER BY ml.created_at
-    """, (username, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")))
+    # Get all mood history
+    mood_history = get_user_mood_history(username)
+    print(f"Found {len(mood_history)} mood entries")
     
-    mood_data = cursor.fetchall()
-    conn.close()
+    # Use all available data for the report
+    recent_mood_history = mood_history
     
-    # Analyze mood patterns
-    mood_counts = {}
-    for entry in mood_data:
-        mood = entry["mood"]
-        mood_counts[mood] = mood_counts.get(mood, 0) + 1
+    # Calculate mood distribution
+    mood_distribution = {}
+    for entry in recent_mood_history:
+        mood = entry['mood']
+        mood_distribution[mood] = mood_distribution.get(mood, 0) + 1
     
-    # Generate insights
-    insights = generate_insights(mood_data, mood_counts)
-    recommendations = generate_recommendations(mood_counts, insights)
+    # Generate insights based on current mood
+    insights = []
+    if recent_mood_history:
+        latest_mood = recent_mood_history[0]['mood']  # Most recent mood
+        insights.append(f"Based on your recent assessment, you're feeling {latest_mood}.")
+        insights.append(f"You've completed {len(recent_mood_history)} mood assessment(s) total.")
+        
+        if len(recent_mood_history) > 1:
+            insights.append("Regular tracking helps identify patterns in your mental wellbeing.")
+        else:
+            insights.append("Consider tracking your mood regularly to see patterns over time.")
+    else:
+        insights.append("No mood data available yet. Complete an assessment to get insights.")
+    
+    # Generate recommendations based on mood
+    recommendations = generate_recommendations(mood_distribution)
+    
+    # Simple trend calculation
+    mood_trend = "New user - establish baseline"
+    if len(recent_mood_history) > 1:
+        mood_trend = "Building your mood history"
     
     return {
         "username": username,
-        "period": f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}",
-        "total_entries": len(mood_data),
-        "mood_distribution": mood_counts,
+        "period": "Current Session",
+        "total_entries": len(recent_mood_history),
+        "mood_distribution": mood_distribution,
         "insights": insights,
         "recommendations": recommendations,
-        "mood_trend": "improving" if is_trend_improving(mood_data) else "stable" if is_trend_stable(mood_data) else "needs_attention"
+        "mood_trend": mood_trend
     }
 
-def generate_insights(mood_data, mood_counts):
-    """Generate insights from mood data"""
-    insights = []
-    
-    if mood_counts.get("Stressed", 0) > 3:
-        insights.append("You've experienced stress multiple times this week. Consider stress management techniques.")
-    
-    if mood_counts.get("Depressed/Low", 0) > 2:
-        insights.append("There were several low mood days. Regular exercise and social connection might help.")
-    
-    if len(mood_data) >= 3 and all(mood["mood"] in ["Happy/Calm", "Neutral"] for mood in mood_data[-3:]):
-        insights.append("Great! Your mood has been consistently positive recently.")
-    
-    if not insights:
-        insights.append("Your mood patterns show normal variation. Continue monitoring how you feel.")
-    
-    return insights
-
-def generate_recommendations(mood_counts, insights):
-    """Generate personalized recommendations"""
+def generate_recommendations(mood_distribution: Dict) -> List[str]:
+    """Generate recommendations based on mood patterns"""
     recommendations = []
     
-    if mood_counts.get("Stressed", 0) > 2:
-        recommendations.extend([
-            "Practice 10 minutes of deep breathing daily",
-            "Try progressive muscle relaxation before bed",
-            "Consider time management techniques"
-        ])
-    
-    if mood_counts.get("Tired/Exhausted", 0) > 2:
-        recommendations.extend([
-            "Ensure 7-8 hours of quality sleep",
-            "Take short breaks during work",
-            "Stay hydrated and maintain balanced nutrition"
-        ])
-    
-    if mood_counts.get("Depressed/Low", 0) > 1:
-        recommendations.extend([
-            "Connect with friends or family regularly",
-            "Engage in light physical activity",
-            "Practice gratitude journaling"
-        ])
-    
-    # Default wellness recommendations
-    if not recommendations:
-        recommendations = [
-            "Continue with your current wellness routine",
-            "Practice mindfulness meditation",
-            "Stay connected with loved ones"
+    if not mood_distribution:
+        return [
+            "Complete your first mood assessment to get personalized recommendations",
+            "Regular tracking helps identify patterns in your mental health",
+            "Consider setting a daily reminder for mood check-ins"
         ]
     
-    return recommendations[:3]  # Return top 3 recommendations
-
-def is_trend_improving(mood_data):
-    """Check if mood trend is improving"""
-    if len(mood_data) < 3:
-        return False
+    # Get the most recent mood (first one in distribution)
+    current_mood = list(mood_distribution.keys())[0] if mood_distribution else "Neutral"
     
-    positive_moods = ["Happy/Calm", "Neutral"]
-    recent_positive = sum(1 for mood in mood_data[-3:] if mood["mood"] in positive_moods)
-    return recent_positive >= 2
-
-def is_trend_stable(mood_data):
-    """Check if mood trend is stable"""
-    if len(mood_data) < 2:
-        return True
-    return len(set(mood["mood"] for mood in mood_data[-3:])) == 1
+    mood_suggestions = {
+        'Happy/Calm': [
+            "Great! Continue practicing self-care and mindfulness",
+            "Share your positive energy with others",
+            "Maintain your healthy routines"
+        ],
+        'Neutral': [
+            "Try adding one enjoyable activity to your day",
+            "Practice mindfulness to enhance emotional awareness",
+            "Set small, achievable goals"
+        ],
+        'Stressed': [
+            "Take 5-minute breaks for deep breathing",
+            "Break tasks into smaller steps",
+            "Prioritize self-care activities"
+        ],
+        'Depressed/Low': [
+            "Reach out to supportive people",
+            "Engage in gentle physical activity",
+            "Be kind to yourself - difficult days are normal"
+        ],
+        'Tired/Exhausted': [
+            "Focus on getting quality sleep",
+            "Take short rest breaks during the day",
+            "Stay hydrated and eat nutritious meals"
+        ]
+    }
+    
+    # Add mood-specific recommendations
+    if current_mood in mood_suggestions:
+        recommendations.extend(mood_suggestions[current_mood])
+    else:
+        recommendations.extend([
+            "Practice gratitude daily",
+            "Stay connected with supportive people",
+            "Maintain a consistent sleep schedule"
+        ])
+    
+    # Add general wellness tips
+    recommendations.extend([
+        "Stay hydrated throughout the day",
+        "Take short walks for mental clarity",
+        "Limit screen time before bed"
+    ])
+    
+    return recommendations[:4]  # Return top 4 recommendations

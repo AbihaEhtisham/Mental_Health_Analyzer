@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mental Health Analyzer</title>
+    <style>
+        :root {
+            --primary-color: #4a6fa5;
+            --secondary-color: #6b8cbc;
+            --accent-color: #ff7e5f;
+            --light-color: #f5f7fa;
+            --dark-color: #333;
+            --success-color: #4caf50;
+            --error-color: #f44336;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #4a0ca3 0%, #1a5dc2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .page {
+            padding: 40px;
+            display: none;
+        }
+        
+        .active {
+            display: block;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Login/Signup Page Styles */
+        .auth-container {
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        
+        .tagline {
+            color: var(--dark-color);
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+        
+        .auth-form {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--dark-color);
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+        
+        input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(74, 111, 165, 0.2);
+        }
+        
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        
+        .btn:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        .toggle-text {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .toggle-link {
+            color: var(--primary-color);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        
+        .error-message {
+            color: var(--error-color);
+            margin-top: 10px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        
+        .success-message {
+            color: var(--success-color);
+            margin-top: 10px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        /* Questions Page Styles */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #2c3e50;
+            text-align: center;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(40px) scale(0.95); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+            }
+        }
+
+        .questions-header {
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #4a0ca3 0%, #1a5dc2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tagline {
+            font-size: 16px;
+            margin-bottom: 30px;
+            color: #5d6d7e;
+        }
+
+        .question-container {
+            text-align: left;
+        }
+
+        .question {
+            margin-bottom: 30px;
+            animation: questionAppear 0.5s ease-out;
+        }
+
+        @keyframes questionAppear {
+            from { 
+                opacity: 0; 
+                transform: translateX(-20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateX(0); 
+            }
+        }
+
+        .question-category {
+            font-size: 14px;
+            color: #8e44ad;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .question-text {
+            font-size: 20px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            line-height: 1.5;
+            color: #2c3e50;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option {
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 2px solid #e3e8f0;
+            background: #ffffff;
+            color: #2c3e50;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option:hover {
+            background: #f8f9fa;
+            transform: translateY(-3px);
+            border-color: #4a0ca3;
+            box-shadow: 0 5px 15px rgba(74, 12, 163, 0.1);
+        }
+
+        .option.selected {
+            background: linear-gradient(135deg, #4a0ca3 0%, #1a5dc2 100%);
+            color: white;
+            border-color: #4a0ca3;
+            box-shadow: 0 5px 20px rgba(74, 12, 163, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .option.selected::before {
+            content: "✓";
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: bold;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            gap: 15px;
+        }
+
+        .nav-btn {
+            padding: 15px 30px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #4a0ca3 0%, #1a5dc2 100%);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            box-shadow: 0 4px 15px rgba(74, 12, 163, 0.3);
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(74, 12, 163, 0.4);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            background: #bdc3c7;
+            box-shadow: none;
+        }
+
+        .nav-btn:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .progress-container {
+            margin-bottom: 30px;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #5d6d7e;
+            font-weight: 500;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #e3e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress {
+            height: 100%;
+            background: linear-gradient(135deg, #4a0ca3 0%, #1a5dc2 100%);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        .progress::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background-image: linear-gradient(
+                -45deg,
+                rgba(255, 255, 255, 0.2) 25%,
+                transparent 25%,
+                transparent 50%,
+                rgba(255, 255, 255, 0.2) 50%,
+                rgba(255, 255, 255, 0.2) 75%,
+                transparent 75%,
+                transparent
+            );
+            background-size: 20px 20px;
+            animation: progressStripes 1s linear infinite;
+        }
+
+        @keyframes progressStripes {
+            0% { background-position: 0 0; }
+            100% { background-position: 20px 0; }
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        @media (max-width: 480px) {
+            .glass-card {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 28px;
+            }
+            
+            .nav-buttons {
+                flex-direction: column;
+            }
+            
+            .question-text {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Page -->
+        <div id="login-page" class="page active">
+            <div class="auth-container">
+                <div class="logo">Mental Health Analyzer</div>
+                <p class="tagline">Login to access your mental health assessment</p>
+                
+                <form class="auth-form" id="login-form">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" placeholder="Enter your username" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" placeholder="Enter your password" required>
+                    </div>
+                    
+                    <button type="submit" class="btn">Login</button>
+                    
+                    <div id="login-message" class="error-message"></div>
+                    
+                    <div class="toggle-text">
+                        Don't have an account? <span class="toggle-link" id="show-signup">Signup</span>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Signup Page -->
+        <div id="signup-page" class="page">
+            <div class="auth-container">
+                <div class="logo">Mental Health Analyzer</div>
+                <p class="tagline">Create your account</p>
+                
+                <form class="auth-form" id="signup-form">
+                    <div class="form-group">
+                        <label for="signup-username">Username</label>
+                        <input type="text" id="signup-username" placeholder="Choose a username" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="signup-email">Email</label>
+                        <input type="email" id="signup-email" placeholder="Enter your email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="signup-password">Password</label>
+                        <input type="password" id="signup-password" placeholder="Create a password" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirm-password">Confirm Password</label>
+                        <input type="password" id="confirm-password" placeholder="Confirm your password" required>
+                    </div>
+                    
+                    <button type="submit" class="btn">Sign Up</button>
+                    
+                    <div id="signup-message" class="error-message"></div>
+                    
+                    <div class="toggle-text">
+                        Already have an account? <span class="toggle-link" id="show-login">Login</span>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Questions Page -->
+        <div id="questions-page" class="page">
+            <button class="logout-btn" id="questions-logout-btn">Logout</button>
+            
+            <div class="glass-card">
+                <div class="questions-header">
+                    <h1>Mental Health Assessment</h1>
+                </div>
+                <p class="tagline">Answer honestly to get the best analysis of your mental well-being</p>
+                
+                <div class="progress-container">
+                    <div class="progress-text" id="progressText">Question 1 of 10</div>
+                    <div class="progress-bar">
+                        <div class="progress" id="progressBar"></div>
+                    </div>
+                </div>
+                
+                <div class="question-container">
+                    <div class="question" id="questionElement">
+                        <!-- Questions will be loaded here dynamically by questions.js -->
+                    </div>
+                    
+                    <div class="nav-buttons">
+                        <button class="nav-btn" id="prevBtn" onclick="previousQuestion()" disabled>Previous</button>
+                        <button class="nav-btn" id="nextBtn" onclick="nextQuestion()">Next Question</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const loginPage = document.getElementById('login-page');
+        const signupPage = document.getElementById('signup-page');
+        const questionsPage = document.getElementById('questions-page');
+        
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        
+        const loginMessage = document.getElementById('login-message');
+        const signupMessage = document.getElementById('signup-message');
+        
+        const showSignupLink = document.getElementById('show-signup');
+        const showLoginLink = document.getElementById('show-login');
+        
+        const questionsLogoutBtn = document.getElementById('questions-logout-btn');
+
+        // Toggle between login and signup
+        showSignupLink.addEventListener('click', function() {
+            loginPage.classList.remove('active');
+            signupPage.classList.add('active');
+        });
+
+        showLoginLink.addEventListener('click', function() {
+            signupPage.classList.remove('active');
+            loginPage.classList.add('active');
+        });
+
+        // Login functionality
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Simple validation - in real app, this would be API call
+            if (username && password) {
+                loginMessage.textContent = '';
+                loginMessage.className = 'success-message';
+                loginMessage.textContent = 'Login successful! Redirecting...';
+                
+                // Store user in localStorage
+                localStorage.setItem('currentUser', username);
+                
+                // Switch to questions page after short delay
+                setTimeout(() => {
+                    loginPage.classList.remove('active');
+                    questionsPage.classList.add('active');
+                    loginForm.reset();
+                    
+                    // Initialize the questionnaire
+                    if (typeof initQuestionnaire === 'function') {
+                        initQuestionnaire();
+                    }
+                }, 1000);
+            } else {
+                loginMessage.textContent = 'Please enter both username and password';
+                loginMessage.className = 'error-message';
+            }
+        });
+
+        // Signup functionality
+        signupForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('signup-username').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            
+            // Simple validation
+            if (!username || !email || !password || !confirmPassword) {
+                signupMessage.textContent = 'Please fill in all fields';
+                signupMessage.className = 'error-message';
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                signupMessage.textContent = 'Passwords do not match';
+                signupMessage.className = 'error-message';
+                return;
+            }
+            
+            // In real app, this would be API call to create account
+            signupMessage.textContent = '';
+            signupMessage.className = 'success-message';
+            signupMessage.textContent = 'Account created successfully! Redirecting to login...';
+            
+            // Switch to login page after short delay
+            setTimeout(() => {
+                signupPage.classList.remove('active');
+                loginPage.classList.add('active');
+                signupForm.reset();
+            }, 1500);
+        });
+
+        // Logout functionality for questions page
+        questionsLogoutBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to logout?')) {
+                // Clear user data
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('moodAnswers');
+                
+                // Return to login page
+                questionsPage.classList.remove('active');
+                loginPage.classList.add('active');
+                loginForm.reset();
+            }
+        });
+    </script>
+
+    <!-- Include the questions.js file -->
+    <script src="questions.js"></script>
+</body>
+</html>

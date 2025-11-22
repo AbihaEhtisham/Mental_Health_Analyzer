@@ -3,12 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from typing import Optional, Dict, List
-from typing import Dict, List, Optional
+from typing import Optional, Dict, List, Any  
 import json
 import os
+import re 
+import random  
+from datetime import datetime  
+from services.report_service import generate_weekly_report
 
-# Import from new structure - NO CHANGES NEEDED since files are in same folder
+
+# Import from new structure
 from LLM_logic_for_mood_detection import query_mood_model
 from LLM_logic_for_psychiatrist import chat_with_psychiatrist, get_initial_greeting
 from prompt_for_mood_detection import system_prompt
@@ -40,19 +44,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static files from frontend directory - CORRECTED PATH
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
-app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+# Serve static files from CURRENT directory (where main.py is located)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Debug: Print paths to verify
+print(f"Current file: {__file__}")
+print(f"BASE_DIR: {BASE_DIR}")
+print(f"Files in current directory: {os.listdir(BASE_DIR)}")
 
-@app.get("/")
-async def serve_frontend():
-    """Serve the main HTML page."""
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+# ============== API ENDPOINTS FIRST (to avoid conflicts) ==============
 
-
-# Request/Response Models - MOVED TO SEPARATE FILES BUT KEEPING HERE FOR COMPATIBILITY
+# Request/Response Models
 class SignupRequest(BaseModel):
     username: str
 
@@ -102,7 +104,7 @@ class WeeklyReportResponse(BaseModel):
     mood_trend: str
 
 
-# Endpoints
+# Endpoints - PUT THESE BEFORE STATIC FILE ROUTES
 @app.post("/signup", response_model=UserResponse)
 async def signup(request: SignupRequest):
     """
@@ -265,6 +267,78 @@ class ChatSessionInfo(BaseModel):
     ended_at: Optional[str]
 
 
+# ============== APPOINTMENT ENDPOINTS ==============
+
+class AppointmentRequest(BaseModel):
+    username: str
+    appointment_date: str
+    appointment_time: str
+    appointment_type: str = "General Consultation"
+    notes: str = ""
+
+class AppointmentResponse(BaseModel):
+    id: int
+    appointment_date: str
+    appointment_time: str
+    appointment_type: str
+    status: str
+    notes: str
+    created_at: str
+
+class UserAppointmentsResponse(BaseModel):
+    username: str
+    appointments: List[AppointmentResponse]
+
+@app.post("/appointments/book", response_model=AppointmentResponse)
+async def book_appointment(request: AppointmentRequest):
+    """Book a new appointment"""
+    username = request.username.strip()
+    
+    # Validate user exists
+    user = get_user(username)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Validate date and time
+    try:
+        # Basic date validation
+        datetime.strptime(request.appointment_date, '%Y-%m-%d')
+        datetime.strptime(request.appointment_time, '%H:%M')
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date or time format")
+    
+    # Create appointment
+    appointment_id = create_appointment(
+        user_id=user["id"],
+        appointment_date=request.appointment_date,
+        appointment_time=request.appointment_time,
+        appointment_type=request.appointment_type,
+        notes=request.notes
+    )
+    
+    # Get the created appointment
+    appointments = get_user_appointments(username)
+    new_appointment = next((app for app in appointments if app["id"] == appointment_id), None)
+    
+    if new_appointment is None:
+        raise HTTPException(status_code=500, detail="Failed to create appointment")
+    
+    return AppointmentResponse(**new_appointment)
+
+@app.get("/appointments/{username}", response_model=UserAppointmentsResponse)
+async def get_user_appointments_endpoint(username: str):
+    """Get all appointments for a user"""
+    username = username.strip()
+    
+    if not user_exists(username):
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    appointments = get_user_appointments(username)
+    
+    return UserAppointmentsResponse(
+        username=username,
+        appointments=appointments
+    )
 @app.post("/chat/start", response_model=StartChatResponse)
 async def start_chat_session(request: StartChatRequest):
     """
@@ -367,6 +441,41 @@ async def send_chat_message(request: ChatMessageRequest):
     return ChatMessageResponse(response=response, message_id=message_id)
 
 
+# Add this to your main.py after the other endpoints
+
+@app.get("/debug/report-test/{username}")
+async def debug_report_test(username: str):
+    """Debug endpoint to test report generation"""
+    try:
+        from services.report_service import generate_weekly_report
+        report = generate_weekly_report(username)
+        return {
+            "status": "success",
+            "report": report,
+            "message": "Report generated successfully"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "message": "Failed to generate report"
+        }
+
+@app.get("/debug/user-mood-data/{username}")
+async def debug_user_mood_data(username: str):
+    """Debug endpoint to check user mood data"""
+    from database import get_user_mood_history, get_user
+    
+    user = get_user(username)
+    mood_history = get_user_mood_history(username)
+    
+    return {
+        "user_exists": user is not None,
+        "mood_entries_count": len(mood_history),
+        "recent_entries": mood_history[:5] if mood_history else [],
+        "all_moods": [entry['mood'] for entry in mood_history] if mood_history else []
+    }
+
 @app.post("/chat/end/{session_id}")
 async def end_chat(session_id: int):
     """
@@ -375,6 +484,57 @@ async def end_chat(session_id: int):
     end_chat_session(session_id)
     return {"status": "success", "message": "Chat session ended"}
 
+@app.get("/simple-report/{username}")
+async def get_simple_report(username: str):
+    """
+    Simple fallback report endpoint
+    """
+    from database import get_user_mood_history, get_user
+    
+    username = username.strip()
+    
+    if not user_exists(username):
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    try:
+        # Get user's mood history
+        mood_history = get_user_mood_history(username)
+        
+        # Create a simple report
+        mood_distribution = {}
+        for entry in mood_history:
+            mood = entry['mood']
+            mood_distribution[mood] = mood_distribution.get(mood, 0) + 1
+        
+        # Generate simple insights
+        insights = []
+        if mood_history:
+            latest_mood = mood_history[0]['mood']
+            insights.append(f"Your current mood is: {latest_mood}")
+            insights.append(f"Total assessments completed: {len(mood_history)}")
+        else:
+            insights.append("No mood data yet. Complete an assessment!")
+        
+        # Simple recommendations
+        recommendations = [
+            "Track your mood regularly for better insights",
+            "Practice self-care daily",
+            "Stay connected with supportive people",
+            "Get adequate sleep and nutrition"
+        ]
+        
+        return {
+            "username": username,
+            "period": "All Time Data",
+            "total_entries": len(mood_history),
+            "mood_distribution": mood_distribution,
+            "insights": insights,
+            "recommendations": recommendations,
+            "mood_trend": "Baseline established" if mood_history else "New user"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating simple report: {str(e)}")
 
 @app.get("/chat/history/{session_id}")
 async def get_chat_history(session_id: int):
@@ -403,8 +563,6 @@ async def get_user_sessions(username: str):
     }
 
 
-# ============== NEW WEEKLY REPORT ENDPOINT ==============
-
 @app.get("/weekly-report/{username}", response_model=WeeklyReportResponse)
 async def get_weekly_report(username: str):
     """
@@ -421,7 +579,231 @@ async def get_weekly_report(username: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating report: {str(e)}")
 
+# ============== CHATBOT ENDPOINTS ==============
+
+CHATBOT_INTENTS = {
+    "greeting": {
+        "patterns": [r"\bhi\b", r"\bhello\b", r"\bhey\b", r"assalam"],
+        "responses": [
+            "Hello! How can I support you today?",
+            "Hey there! What's on your mind?",
+            "Hi! I'm here to help whenever you're ready."
+        ]
+    },
+    "sadness": {
+        "patterns": [r"\bsad\b", r"\bdepressed\b", r"\bdown\b", r"\bunhappy\b"],
+        "responses": [
+            "I'm really sorry you're feeling this way. Want to share what's troubling you?",
+            "That sounds hard… I'm here for you. What happened?",
+            "It's okay to feel this way. Tell me more, I'm listening."
+        ]
+    },
+    "anxiety": {
+        "patterns": [r"\banxious\b", r"\banxiety\b", r"\bscared\b", r"\bworried\b"],
+        "responses": [
+            "Anxiety can be overwhelming. Do you know what triggered it?",
+            "You're safe. Let's work through this. What are you worried about?",
+            "Take a breath… I'm right here. Want to talk about what's making you anxious?"
+        ]
+    },
+    "stress": {
+        "patterns": [r"\bstress\b", r"\bstressed\b", r"\boverwhelmed\b", r"\bpressure\b"],
+        "responses": [
+            "Stress can feel overwhelming. Let's break this down together.",
+            "I hear you're feeling stressed. What's causing the most pressure right now?",
+            "Stress is tough. Would it help to talk about what's overwhelming you?"
+        ]
+    },
+    "sleep": {
+        "patterns": [r"\bsleep\b", r"\btired\b", r"\binsomnia\b", r"\bexhausted\b"],
+        "responses": [
+            "Sleep issues can really affect your wellbeing. How's your sleep been lately?",
+            "Feeling tired can make everything harder. Are you getting enough rest?",
+            "Sleep is so important for mental health. What's your sleep pattern been like?"
+        ]
+    },
+    "goodbye": {
+        "patterns": [r"\bbye\b", r"\bgoodbye\b", r"\bsee you\b", r"\bgood night\b"],
+        "responses": [
+            "Take care! I'm always here if you need me.",
+            "Goodbye! Remember, you're doing your best.",
+            "See you soon. Stay strong!"
+        ]
+    }
+}
+
+class ChatbotRequest(BaseModel):
+    user_id: Optional[str] = None
+    message: str
+    metadata: Optional[Dict[str, Any]] = None
+
+class ChatbotResponse(BaseModel):
+    user_id: Optional[str]
+    message: str
+    intent: str
+    timestamp: str
+    bot_reply: str
+    confidence: float
+
+def classify_chatbot_intent(message: str) -> (str, float):
+    """
+    Simple regex-based intent classification for the chatbot
+    """
+    message = message.lower()
+    
+    for intent_name, data in CHATBOT_INTENTS.items():
+        for pattern in data["patterns"]:
+            if re.search(pattern, message, re.IGNORECASE):
+                return intent_name, 0.9
+    
+    # Fallback: check for keywords
+    for intent_name, data in CHATBOT_INTENTS.items():
+        for pattern in data["patterns"]:
+            keyword = re.sub(r"[^\w\s]", "", pattern)
+            if keyword and keyword.strip() and keyword.strip() in message:
+                return intent_name, 0.6
+    
+    return "general", 0.3
+
+def generate_chatbot_reply(intent: str, user_message: str) -> str:
+    """
+    Generate response based on intent
+    """
+    if intent in CHATBOT_INTENTS:
+        return random.choice(CHATBOT_INTENTS[intent]["responses"])
+    
+    # Fallback empathetic responses
+    fallback_responses = [
+        "I understand... please tell me more about how you're feeling.",
+        "Thank you for sharing that with me. Would you like to explore this further?",
+        "I'm listening carefully. Could you tell me more about what's on your mind?",
+        "That sounds important. How has this been affecting you?",
+        "I appreciate you opening up about this. What would help you feel better?",
+        "Let's work through this together. What do you think might help?"
+    ]
+    return random.choice(fallback_responses)
+
+@app.post("/chatbot/message", response_model=ChatbotResponse)
+async def chatbot_message(request: ChatbotRequest):
+    """
+    Simple chatbot endpoint that works independently of the main psychiatrist chat
+    """
+    if not request.message or not request.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    # Classify intent and generate response
+    intent, confidence = classify_chatbot_intent(request.message)
+    bot_reply = generate_chatbot_reply(intent, request.message)
+    timestamp = datetime.utcnow().isoformat()
+
+    return ChatbotResponse(
+        user_id=request.user_id,
+        message=request.message,
+        intent=intent,
+        timestamp=timestamp,
+        bot_reply=bot_reply,
+        confidence=confidence
+    )
+
+@app.get("/chatbot/intents")
+async def get_chatbot_intents():
+    """Get list of available intents"""
+    return {"intents": list(CHATBOT_INTENTS.keys())}
+
+
+# ============== STATIC FILE ROUTES (PUT THESE LAST) ==============
+
+# Serve static files (JS, CSS, HTML) - PUT THESE AFTER API ENDPOINTS
+@app.get("/")
+async def serve_login():
+    """Serve the login page as default."""
+    return FileResponse(os.path.join(BASE_DIR, "login.html"))
+
+@app.get("/login")
+async def serve_login_page():
+    """Serve the login page."""
+    return FileResponse(os.path.join(BASE_DIR, "login.html"))
+
+@app.get("/questions")
+async def serve_questions():
+    """Serve the questions page."""
+    return FileResponse(os.path.join(BASE_DIR, "login.html"))
+
+@app.get("/results")
+async def serve_results():
+    """Serve the results page."""
+    return FileResponse(os.path.join(BASE_DIR, "results.html"))
+
+@app.get("/report")
+async def serve_report():
+    """Serve the weekly report page."""
+    return FileResponse(os.path.join(BASE_DIR, "report.html"))
+
+@app.get("/chat")
+async def serve_chat():
+    """Serve the chat page."""
+    return FileResponse(os.path.join(BASE_DIR, "chat.html"))
+
+# Serve JS files
+@app.get("/{filename}.js")
+async def serve_js(filename: str):
+    """Serve JavaScript files."""
+    js_files = ["questions", "results", "report", "chat"]
+    if filename in js_files:
+        file_path = os.path.join(BASE_DIR, f"{filename}.js")
+        if os.path.exists(file_path):
+            return FileResponse(file_path, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="File not found")
+
+# Serve CSS files
+@app.get("/styles.css")
+async def serve_css():
+    """Serve CSS files."""
+    file_path = os.path.join(BASE_DIR, "styles.css")
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="text/css")
+    raise HTTPException(status_code=404, detail="File not found")
+
+# Serve assets
+@app.get("/assets/{asset_path:path}")
+async def serve_assets(asset_path: str):
+    """Serve assets from the assets folder."""
+    asset_file_path = os.path.join(BASE_DIR, "assets", asset_path)
+    if os.path.exists(asset_file_path):
+        return FileResponse(asset_file_path)
+    raise HTTPException(status_code=404, detail="Asset not found")
+
+
+@app.get("/{filename}.html")
+async def serve_html(filename: str):
+    """Serve HTML files."""
+    html_files = ["login", "results", "report", "chat"]
+    if filename in html_files:
+        file_path = os.path.join(BASE_DIR, f"{filename}.html")
+        if os.path.exists(file_path):
+            return FileResponse(file_path, media_type="text/html")
+    raise HTTPException(status_code=404, detail="File not found")
+
+@app.get("/debug/user-data")
+async def debug_user_data():
+    """Debug endpoint to check user data in localStorage"""
+    return {
+        "message": "Debug endpoint working",
+        "test_data": {
+            "currentUser": "test_user",
+            "currentMoodLogId": 1
+        }
+    }
+
+@app.post("/test/chat-start")
+async def test_chat_start():
+    """Test endpoint for chat start"""
+    return {
+        "session_id": 999,
+        "greeting": "Hello! This is a test greeting from NeuroCare AI. How are you feeling today?",
+        "mood": "Test Mood"
+    }
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Results - Mental Health Analyzer</title>
+    <style>
+        :root {
+            --primary-color: #4a6fa5;
+            --secondary-color: #6b8cbc;
+            --accent-color: #ff7e5f;
+            --light-color: #f5f7fa;
+            --dark-color: #333;
+            --success-color: #4caf50;
+            --error-color: #f44336;
+            --button-color: #4a0ca3;
+            --button-hover: #1a5dc2;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #4a0ca3 0%, #1a5dc2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 50px 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #2c3e50;
+            text-align: center;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(40px) scale(0.95); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .logo-icon {
+            font-size: 2.5rem;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #4a0ca3 0%, #1a5dc2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #5d6d7e;
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+        }
+
+        .mood-result {
+            padding: 40px 30px;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        .mood-icon {
+            font-size: 5rem;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .mood-text {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .mood-score {
+            display: inline-block;
+            background: linear-gradient(135deg, #4a0ca3 0%, #1a5dc2 100%);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(74, 12, 163, 0.3);
+        }
+
+        .mood-description {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            color: #5d6d7e;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .result-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 18px 25px;
+            border-radius: 12px;
+            border: none;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, var(--button-color) 0%, var(--button-hover) 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: #5d6d7e;
+            border: 2px solid #bdc3c7;
+            grid-column: 1 / -1;
+            margin-top: 10px;
+        }
+
+        .btn-outline:hover {
+            background: #f8f9fa;
+            border-color: var(--button-color);
+            color: var(--button-color);
+        }
+
+        .btn-icon {
+            font-size: 1.3rem;
+        }
+
+        /* Mood-specific styles */
+        .mood-positive {
+            background: linear-gradient(135deg, #e8f5e8 0%, #ffffff 100%);
+            border-left: 6px solid #2ecc71;
+        }
+
+        .mood-neutral {
+            background: linear-gradient(135deg, #fef9e7 0%, #ffffff 100%);
+            border-left: 6px solid #f39c12;
+        }
+
+        .mood-support {
+            background: linear-gradient(135deg, #fdedec 0%, #ffffff 100%);
+            border-left: 6px solid #e74c3c;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .glass-card {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .mood-icon {
+                font-size: 4rem;
+            }
+            
+            .mood-text {
+                font-size: 1.8rem;
+            }
+            
+            .result-actions {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn {
+                padding: 16px 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logo {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .mood-icon {
+                font-size: 3.5rem;
+            }
+            
+            .mood-text {
+                font-size: 1.5rem;
+            }
+            
+            .mood-description {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="glass-card">
+            <div class="header">
+                <div class="logo">
+                    <span class="logo-icon">🧠</span>
+                    <h1>Your Mood Analysis</h1>
+                </div>
+                <p class="subtitle">Based on your assessment responses</p>
+            </div>
+
+            <div class="mood-result" id="mood-result">
+                <div class="mood-icon" id="mood-icon">😊</div>
+                <h3 class="mood-text" id="mood-text">Analyzing your mood...</h3>
+                <div class="mood-score" id="mood-score">Processing</div>
+                <p class="mood-description" id="mood-description">
+                    We're analyzing your responses to provide personalized insights about your mental wellbeing.
+                </p>
+            </div>
+            
+            <div class="result-actions">
+                <button id="talk-btn" class="btn">
+                    <span class="btn-icon">💬</span>
+                    Talk to NeuroCare AI
+                </button>
+                <button id="retake-btn" class="btn">
+                    <span class="btn-icon">🔄</span>
+                    Take Again
+                </button>
+                <button id="report-btn" class="btn">
+                    <span class="btn-icon">📊</span>
+                    Weekly Report
+                </button>
+                <button id="logout-btn" class="btn btn-outline">
+                    <span class="btn-icon">🚪</span>
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mood configuration with emojis and descriptions - UPDATED TO MATCH LLM OUTPUT
+        const moodConfig = {
+            'Happy/Calm': {
+                emoji: '😊',
+                title: 'Happy & Calm',
+                description: 'Your responses indicate excellent mental wellbeing! You\'re experiencing positive emotions, good stress management, and healthy coping mechanisms. Continue practicing self-care and mindfulness to maintain this wonderful balance.',
+                score: 'Excellent Mood'
+            },
+            'Neutral': {
+                emoji: '😐',
+                title: 'Neutral & Stable',
+                description: 'You\'re in a stable emotional state with balanced moods. While not experiencing extreme highs or lows, you might benefit from incorporating more joyful activities into your routine to enhance overall satisfaction.',
+                score: 'Stable Mood'
+            },
+            'Stressed': {
+                emoji: '😥',
+                title: 'Stressed & Overwhelmed',
+                description: 'You appear to be dealing with significant stress. Break tasks into smaller steps, practice time management, and ensure you\'re getting adequate rest. Remember to prioritize self-care during demanding times.',
+                score: 'High Stress'
+            },
+            'Depressed/Low': {
+                emoji: '😔',
+                title: 'Feeling Low',
+                description: 'You seem to be experiencing some emotional discomfort or low mood. Remember that it\'s okay to feel this way sometimes. Consider reaching out to supportive people or engaging in activities that usually lift your spirits.',
+                score: 'Needs Support'
+            },
+            'Tired/Exhausted': {
+                emoji: '😴',
+                title: 'Fatigued & Drained',
+                description: 'Your energy levels seem low, which can affect mood and motivation. Focus on getting quality sleep, proper nutrition, and gentle movement. Consider whether you need more rest or a change in routine.',
+                score: 'Low Energy'
+            }
+        };
+
+        // Function to display mood results
+        function displayMoodResult(mood) {
+            // Map any mood variations to the expected keys
+            let moodKey = mood;
+            if (mood.includes('Happy') || mood.includes('Calm')) {
+                moodKey = 'Happy/Calm';
+            } else if (mood.includes('Depressed') || mood.includes('Low') || mood.includes('Sad')) {
+                moodKey = 'Depressed/Low';
+            } else if (mood.includes('Tired') || mood.includes('Exhausted')) {
+                moodKey = 'Tired/Exhausted';
+            } else if (mood.includes('Stressed') || mood.includes('Overwhelmed')) {
+                moodKey = 'Stressed';
+            } else if (mood.includes('Neutral') || mood.includes('Stable')) {
+                moodKey = 'Neutral';
+            }
+            
+            const moodData = moodConfig[moodKey] || moodConfig['Neutral'];
+            
+            const moodIcon = document.getElementById('mood-icon');
+            const moodText = document.getElementById('mood-text');
+            const moodScore = document.getElementById('mood-score');
+            const moodDescription = document.getElementById('mood-description');
+            const moodResult = document.getElementById('mood-result');
+
+            // Update content
+            moodIcon.textContent = moodData.emoji;
+            moodText.textContent = moodData.title;
+            moodScore.textContent = moodData.score;
+            moodDescription.textContent = moodData.description;
+
+            // Update styling based on mood type
+            moodResult.className = 'mood-result';
+            if (moodKey === 'Happy/Calm') {
+                moodResult.classList.add('mood-positive');
+            } else if (moodKey === 'Neutral') {
+                moodResult.classList.add('mood-neutral');
+            } else {
+                moodResult.classList.add('mood-support');
+            }
+        }
+
+        // Function to generate a simple report using localStorage data
+        function generateSimpleReport() {
+            const currentMood = localStorage.getItem('currentMood') || 'Not recorded';
+            const username = localStorage.getItem('currentUser');
+            const moodLogId = localStorage.getItem('currentMoodLogId');
+            
+            // Create a simple report object
+            const report = {
+                username: username,
+                period: "Current Session",
+                total_entries: moodLogId ? 1 : 0,
+                mood_distribution: currentMood !== 'Not recorded' ? { [currentMood]: 1 } : {},
+                insights: [
+                    currentMood !== 'Not recorded' 
+                        ? `Your current mood is: ${currentMood}`
+                        : "Complete a mood assessment to get insights",
+                    "This report is based on your current session data",
+                    "Complete more assessments to get comprehensive weekly insights"
+                ],
+                recommendations: [
+                    "Track your mood regularly for better insights",
+                    "Practice mindfulness and self-care daily",
+                    "Stay connected with supportive relationships",
+                    "Maintain healthy sleep and nutrition habits"
+                ],
+                mood_trend: "Current session - establish baseline"
+            };
+            
+            // Store the report in localStorage for the report page to use
+            localStorage.setItem('currentReport', JSON.stringify(report));
+            return true;
+        }
+
+        // Function to test if report endpoint is available
+        async function testReportEndpoint(username) {
+            try {
+                const response = await fetch(`/weekly-report/${username}`);
+                return response.ok;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        // Get mood from localStorage and display results
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentMood = localStorage.getItem('currentMood');
+            if (currentMood) {
+                displayMoodResult(currentMood);
+            } else {
+                // Fallback if no mood data
+                displayMoodResult('Neutral');
+            }
+
+            // Button event listeners - UPDATED FOR CHAT FUNCTIONALITY
+            document.getElementById('talk-btn').addEventListener('click', function() {
+                const moodLogId = localStorage.getItem('currentMoodLogId');
+                const username = localStorage.getItem('currentUser');
+                
+                if (moodLogId && username) {
+                    // Direct navigation to chat page - the chat will auto-start
+                    window.location.href = '/chat';
+                } else {
+                    alert('Please complete a mood assessment first.');
+                }
+            });
+
+            document.getElementById('retake-btn').addEventListener('click', function() {
+                // Clear previous answers but keep user logged in
+                localStorage.removeItem('moodAnswers');
+                localStorage.removeItem('currentMood');
+                localStorage.removeItem('currentMoodLogId');
+                window.location.href = '/questions';
+            });
+
+            document.getElementById('report-btn').addEventListener('click', async function() {
+                const username = localStorage.getItem('currentUser');
+                if (username) {
+                    // Show loading state
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<span class="btn-icon">⏳</span>Generating Report...';
+                    this.disabled = true;
+                    
+                    try {
+                        // First try the main report endpoint
+                        const isEndpointAvailable = await testReportEndpoint(username);
+                        
+                        if (isEndpointAvailable) {
+                            // Use the main report endpoint
+                            window.location.href = `/report?user=${username}`;
+                        } else {
+                            // Generate simple report using localStorage data
+                            if (generateSimpleReport()) {
+                                window.location.href = `/report?user=${username}&source=local`;
+                            } else {
+                                alert('Unable to generate report. Please try again.');
+                            }
+                        }
+                    } catch (error) {
+                        // Fallback to simple report
+                        if (generateSimpleReport()) {
+                            window.location.href = `/report?user=${username}&source=local`;
+                        } else {
+                            alert('Error generating report: ' + error.message);
+                        }
+                    } finally {
+                        // Restore button state
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }
+                } else {
+                    alert('Please login again.');
+                }
+            });
+
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                if (confirm('Are you sure you want to logout?')) {
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('currentMood');
+                    localStorage.removeItem('currentMoodLogId');
+                    localStorage.removeItem('moodAnswers');
+                    localStorage.removeItem('currentReport');
+                    window.location.href = '/login';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
