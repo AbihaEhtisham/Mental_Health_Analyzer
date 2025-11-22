@@ -30,8 +30,6 @@ from database import (
     get_latest_mood_log
 )
 
-# Import the new report service
-from services.report_service import generate_weekly_report
 
 app = FastAPI(title="Mental Health Analyzer API")
 
@@ -45,7 +43,7 @@ app.add_middleware(
 )
 
 # Serve static files from CURRENT directory (where main.py is located)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Debug: Print paths to verify
 print(f"Current file: {__file__}")
