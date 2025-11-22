@@ -734,4 +734,9 @@ async def test_chat_start():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    if os.environ.get('VERCEL'):
+        # Running on Vercel
+        uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+    else:
+        # Running locally
+        uvicorn.run(app, host="127.0.0.1", port=8000)

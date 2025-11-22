@@ -7,6 +7,12 @@ import os
 PKT = timezone(timedelta(hours=5))
 
 
+# For Vercel deployment
+if os.environ.get('VERCEL'):
+    DB_PATH = "/tmp/mood_tracker.db"
+else:
+    DB_PATH = os.path.join(os.path.dirname(__file__), "mood_tracker.db")
+
 def get_pkt_now():
     """Get current time in Pakistan Standard Time."""
     return datetime.now(PKT).strftime("%Y-%m-%d %H:%M:%S")
