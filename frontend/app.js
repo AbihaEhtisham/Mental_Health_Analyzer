@@ -603,5 +603,93 @@ logoutBtn.addEventListener('click', () => {
     showSection(authSection);
 });
 
+
+// Add to moodData object
+const recommendationData = {
+    'Stressed': [
+        'Practice 10 minutes of deep breathing daily',
+        'Try progressive muscle relaxation',
+        'Consider time management techniques'
+    ],
+    'Depressed/Low': [
+        'Connect with friends or family',
+        'Engage in physical activity',
+        'Practice gratitude journaling'
+    ],
+    'Tired/Exhausted': [
+        'Ensure 7-8 hours of quality sleep',
+        'Take short breaks during work',
+        'Stay hydrated and eat balanced meals'
+    ],
+    'Neutral': [
+        'Maintain your current routine',
+        'Try a new hobby or activity',
+        'Practice mindfulness meditation'
+    ],
+    'Happy/Calm': [
+        'Continue your positive habits',
+        'Share your positivity with others',
+        'Set new personal goals'
+    ]
+};
+
+// Add report button to result section HTML
+// Add this button to result-actions div:
+// <button id="report-btn" class="btn btn-info">Weekly Report</button>
+
+// Add event handler
+document.getElementById('report-btn').addEventListener('click', async () => {
+    showLoading();
+    try {
+        const report = await getWeeklyReport(currentUser);
+        displayWeeklyReport(report);
+    } catch (error) {
+        alert('Error generating report: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+async function getWeeklyReport(username) {
+    const response = await fetch(`${API_URL}/weekly-report/${encodeURIComponent(username)}`);
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail);
+    }
+    return await response.json();
+}
+
+function displayWeeklyReport(report) {
+    // Create and show report modal or new section
+    const reportHTML = `
+        <div class="report-modal">
+            <h2>Weekly Mood Report</h2>
+            <div class="report-period">${report.period}</div>
+            <div class="report-summary">
+                <div class="report-stat">Total Entries: ${report.total_entries}</div>
+                <div class="report-stat">Trend: ${report.mood_trend}</div>
+            </div>
+            <div class="mood-distribution">
+                <h3>Mood Distribution</h3>
+                ${Object.entries(report.mood_distribution).map(([mood, count]) => `
+                    <div class="mood-dist-item">
+                        <span class="mood-name">${mood}</span>
+                        <span class="mood-count">${count}</span>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="insights">
+                <h3>Insights</h3>
+                ${report.insights.map(insight => `<div class="insight">${insight}</div>`).join('')}
+            </div>
+            <div class="recommendations">
+                <h3>Recommendations</h3>
+                ${report.recommendations.map(rec => `<div class="recommendation">${rec}</div>`).join('')}
+            </div>
+        </div>
+    `;
+    // Implement modal display logic
+}
+
 // Initialize
 showQuestion(1);
